@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Language-Guided Bayesian Optimization for LoRA Hyperparameters | ICML 2026</title>
+<meta name="description" content="A Language-Guided Bayesian Optimization for Efficient LoRA Hyperparameter Search — ICML 2026.">
+
+<!-- Open Graph -->
+<meta property="og:title" content="A Language-Guided Bayesian Optimization for Efficient LoRA Hyperparameter Search">
+<meta property="og:description" content="ICML 2026. Leveraging pre-trained LLMs as a discrete-to-continuous mapping for efficient LoRA hyperparameter search.">
+<meta property="og:type" content="website">
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Display:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #fafafa;
+    --ink: #363636;
+    --ink-soft: #4a4a4a;
+    --ink-muted: #7a7a7a;
+    --link: #3273dc;
+    --link-hover: #205bbc;
+    --rule: #ededed;
+    --btn-bg: #363636;
+    --btn-bg-hover: #1f1f1f;
+    --improvement: #2f8a2f;
+
+    --font-display: 'Noto Sans Display', 'Google Sans', sans-serif;
+    --font-body: 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Menlo', monospace;
+
+    --container: 1000px;
+    --container-narrow: 820px;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  a {
+    color: var(--link);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+  a:hover { color: var(--link-hover); }
+
+  /* ===== Top nav bar ===== */
+  .navbar {
+    border-bottom: 1px solid var(--rule);
+    padding: 14px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95rem;
+  }
+  .navbar a {
+    color: var(--ink);
+    margin-left: 18px;
+    font-weight: 500;
+  }
+  .navbar a:hover { color: var(--link); }
+  .navbar .home { font-family: var(--font-mono); font-size: 0.88rem; color: var(--ink-muted); }
+
+  /* ===== Hero ===== */
+  .hero {
+    padding: 56px 24px 32px;
+    text-align: center;
+  }
+  .hero .container { max-width: var(--container); margin: 0 auto; }
+
+  .venue-pill {
+    display: inline-block;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin-bottom: 18px;
+    letter-spacing: 0.01em;
+  }
+  .venue-pill .accent { color: #ff8c42; }
+
+  h1.title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(1.7rem, 3.4vw, 2.55rem);
+    line-height: 1.22;
+    margin: 0 0 28px;
+    color: #2a2a2a;
+    letter-spacing: -0.015em;
+  }
+
+  .authors {
+    font-size: 1.08rem;
+    line-height: 1.9;
+    margin-bottom: 8px;
+  }
+  .author {
+    margin: 0 6px;
+    white-space: nowrap;
+  }
+  .author a { color: var(--link); font-weight: 500; }
+  .author sup { color: var(--ink-muted); font-weight: 400; font-size: 0.78em; margin-left: 1px; }
+
+  .affiliations {
+    font-size: 1rem;
+    color: var(--ink-soft);
+    margin-bottom: 28px;
+  }
+  .affiliations sup { color: var(--ink-muted); font-size: 0.78em; }
+
+  /* Buttons */
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 20px;
+    background: var(--btn-bg);
+    color: #fff;
+    border-radius: 999px;
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 0.96rem;
+    text-decoration: none;
+    transition: all 0.18s ease;
+    border: none;
+    cursor: pointer;
+  }
+  .btn:hover {
+    background: var(--btn-bg-hover);
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  }
+  .btn i { font-size: 0.95em; }
+  .btn.disabled {
+    background: #c2c2c2;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* ===== Sections ===== */
+  section.content { padding: 44px 24px; }
+  section.content .container {
+    max-width: var(--container-narrow);
+    margin: 0 auto;
+  }
+  section.content.wide .container { max-width: var(--container); }
+  section.content.alt { background: var(--bg-soft); }
+
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.65rem;
+    margin: 0 0 18px;
+    color: #2a2a2a;
+    text-align: center;
+  }
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.18rem;
+    margin: 28px 0 10px;
+    color: #2a2a2a;
+    text-align: center;
+  }
+  p {
+    margin: 0 0 14px;
+    text-align: justify;
+    hyphens: auto;
+  }
+  p.lead { font-size: 1.02rem; }
+
+  em.key { font-style: normal; font-weight: 600; color: #2a2a2a; }
+
+  /* ===== Results table ===== */
+  .table-caption {
+    font-size: 0.92rem;
+    color: var(--ink-soft);
+    line-height: 1.55;
+    margin: 8px 0 16px;
+    text-align: left;
+  }
+  .table-caption b { color: var(--ink); }
+
+  .table-wrap {
+    overflow-x: auto;
+    margin: 14px 0 28px;
+  }
+  table.results {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+    font-family: var(--font-body);
+  }
+  table.results thead tr:first-child {
+    border-top: 2px solid var(--ink);
+  }
+  table.results thead tr:last-child {
+    border-bottom: 1px solid var(--ink);
+  }
+  table.results tbody tr.last-of-strategy {
+    border-bottom: 1px solid var(--rule);
+  }
+  table.results tbody tr:last-child {
+    border-bottom: 2px solid var(--ink);
+  }
+  table.results th, table.results td {
+    padding: 7px 10px;
+    text-align: center;
+    vertical-align: middle;
+  }
+  table.results th.left, table.results td.left { text-align: left; }
+  table.results th.group {
+    border-bottom: 1px solid #999;
+    font-weight: 600;
+  }
+  table.results th.sub {
+    font-weight: 500;
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+    padding-top: 4px;
+  }
+  table.results td.method {
+    font-weight: 500;
+    color: var(--ink);
+  }
+  table.results td.method .ref {
+    color: var(--link);
+    font-weight: 400;
+    font-size: 0.9em;
+  }
+  table.results .cross { color: #c0392b; }
+  table.results .check { color: var(--improvement); font-weight: 700; }
+  table.results .gain { color: var(--improvement); font-size: 0.88em; margin-left: 2px; }
+  table.results tr.with-ours td {
+    padding-top: 4px;
+    border-top: 1px dashed var(--rule);
+  }
+
+  /* ===== Figure ===== */
+  figure.qual {
+    margin: 18px 0;
+    text-align: center;
+  }
+  figure.qual img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+  figure.qual figcaption {
+    font-size: 0.93rem;
+    color: var(--ink-soft);
+    margin-top: 14px;
+    text-align: justify;
+    line-height: 1.55;
+    padding: 0 4px;
+  }
+  figure.qual figcaption b { color: var(--ink); }
+
+  /* ===== BibTeX ===== */
+  pre.bibtex {
+    background: #f5f5f5;
+    color: #2a2a2a;
+    padding: 18px 22px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    position: relative;
+    border: 1px solid var(--rule);
+    margin: 12px 0 0;
+  }
+  pre.bibtex .copy-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #fff;
+    border: 1px solid var(--rule);
+    color: var(--ink-soft);
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  pre.bibtex .copy-btn:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  /* ===== Footer ===== */
+  footer {
+    padding: 36px 24px;
+    border-top: 1px solid var(--rule);
+    text-align: center;
+    color: var(--ink-muted);
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+  footer a { color: var(--ink-muted); text-decoration: underline; }
+  footer a:hover { color: var(--link); }
+  footer .icons { font-size: 1.3rem; margin-bottom: 14px; }
+  footer .icons a { margin: 0 8px; color: var(--ink-soft); text-decoration: none; }
+
+  @media (max-width: 640px) {
+    .hero { padding: 36px 18px 24px; }
+    section.content { padding: 28px 18px; }
+    body { font-size: 16px; }
+    .btn { padding: 7px 16px; font-size: 0.88rem; }
+    p { text-align: left; }
+    table.results { font-size: 0.82rem; }
+    table.results th, table.results td { padding: 5px 6px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ TOP NAV ============ -->
+<nav class="navbar">
+  <a href="https://baekseongeun.github.io/" class="home" target="_blank" rel="noopener">baekseongeun.github.io</a>
+  <div>
+    <a href="https://ami.kaist.ac.kr/publications" target="_blank" rel="noopener">More Research</a>
+    <a href="https://www.linkedin.com/in/baek-seong-eun-64b473276" target="_blank" rel="noopener"><i class="fab fa-linkedin"></i> LinkedIn</a>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="container">
+    <div class="venue-pill">ICML 2026 <span class="accent">(Main Conference 🎉)</span></div>
+    <h1 class="title">A Language-Guided Bayesian Optimization for Efficient LoRA Hyperparameter Search</h1>
+
+    <div class="authors">
+      <span class="author"><a href="https://baekseongeun.github.io/" target="_blank" rel="noopener">Baek Seong-Eun</a><sup>1</sup></span>
+      <span class="author"><a href="https://mok0102.github.io/" target="_blank" rel="noopener">Lee Jung-Mok</a><sup>2</sup></span>
+      <span class="author"><a href="https://sites.google.com/view/kimsungbin" target="_blank" rel="noopener">Kim Sung-Bin</a><sup>3</sup></span>
+      <span class="author corresponding"><a href="https://ami.kaist.ac.kr/members/tae-hyun-oh" target="_blank" rel="noopener">Tae-Hyun Oh</a><sup>4,&dagger;</sup></span>
+    </div>
+    <div class="affiliations">
+      <sup>1</sup>Graduate School of AI, POSTECH &nbsp;
+      <sup>2</sup>Department of Electrical Engineering, KAIST<br>
+      <sup>3</sup>Department of Electrical Engineering, POSTECH &nbsp;
+      <sup>4</sup>School of Computing, KAIST<br>
+      <span style="font-size: 0.92rem;"><sup>&dagger;</sup>Corresponding author</span>
+    </div>
+
+    <div class="actions">
+      <a class="btn" href="https://arxiv.org/abs/2602.11171" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> Paper</a>
+      <a class="btn" href="https://arxiv.org/abs/2602.11171" target="_blank" rel="noopener"><i class="fas fa-archive"></i> arXiv</a>
+      <a class="btn disabled" href="#"><i class="fab fa-github"></i> Code (TBU)</a>
+    </div>
+  </div>
+</header>
+
+<!-- ============ ABSTRACT ============ -->
+<section class="content" id="abstract">
+  <div class="container">
+    <h2>Abstract</h2>
+    <p class="lead">
+      Fine-tuning Large Language Models (LLMs) with Low-Rank Adaptation (LoRA) offers a resource-efficient way to personalize or specialize. However, LoRA is highly sensitive to hyperparameter choices, and performing an exhaustive hyperparameter search remains computationally intensive. To address these challenges, we propose a framework that integrates the domain knowledge of pre-trained LLMs into the Bayesian Optimization (BO) process to efficiently search for LoRA hyperparameters.
+    </p>
+    <p class="lead">
+      To leverage pre-trained LLMs' knowledge, our approach repurposes them as a <em class="key">discrete-to-continuous mapping module</em> to link hyperparameters and their domain knowledge to a continuous vector space, where BO is conducted. We design and control the mapping via language prompting, providing a domain-aware textual prompt that describes the relationships among hyperparameters and their respective roles. This allows us to explicitly inject domain knowledge about LoRA into the LLM in natural language. We also introduce an <em class="key">additional learnable token</em> to capture residual information that is difficult to describe linguistically in the prompt. This aids BO to sample more high-performing hyperparameters.
+    </p>
+    <p class="lead">
+      In addition, by leveraging the strong correlation observed between the performance obtained from full and subset training datasets in LoRA training regimes, we introduce <em class="key">proxy training and evaluation</em> using a data subset. This significantly improves the efficiency of our method. We demonstrate that our hyperparameter, discovered with only about <em class="key">30 iterations</em>, achieves more than <em class="key">20% performance improvement</em> over standard hyperparameters found from about 45,000 combinations. Code will be released.
+    </p>
+  </div>
+</section>
+
+<!-- ============ RESULTS — TABLES ============ -->
+<section class="content alt wide" id="results">
+  <div class="container">
+    <h2>Results</h2>
+
+    <!-- TABLE 2 -->
+    <h3 style="text-align: left;">Table 2. Results of applying our framework to LoRA variants.</h3>
+    <p class="table-caption">
+      We set the hyperparameter configurations suggested by each work, where they were dedicatedly tuned (Kalajdzievski, 2023; Liu et al., 2024b; Meng et al., 2024; Wang et al., 2024). Using our method, we observe consistent performance improvements across all variants.
+    </p>
+
+    <div class="table-wrap">
+      <table class="results">
+        <thead>
+          <tr>
+            <th rowspan="2" class="left">Strategy</th>
+            <th rowspan="2">Ours</th>
+            <th colspan="2" class="group">Accuracy (%)</th>
+            <th colspan="2" class="group">Pass@1</th>
+            <th class="group">GPT-Score</th>
+          </tr>
+          <tr>
+            <th class="sub">GSM8K</th>
+            <th class="sub">MATH</th>
+            <th class="sub">HumanEval</th>
+            <th class="sub">MBPP</th>
+            <th class="sub">MT-Bench</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- LoRA -->
+          <tr>
+            <td rowspan="2" class="method left">LoRA <span class="ref">(Hu et al., 2022)</span></td>
+            <td><span class="cross">✗</span></td>
+            <td>41.47</td><td>5.24</td><td>16.31</td><td>35.47</td><td>7.181</td>
+          </tr>
+          <tr class="with-ours last-of-strategy">
+            <td><span class="check">✓</span></td>
+            <td>62.93 <span class="gain">(+21.46)</span></td>
+            <td>12.88 <span class="gain">(+7.64)</span></td>
+            <td>30.49 <span class="gain">(+14.18)</span></td>
+            <td>42.59 <span class="gain">(+7.12)</span></td>
+            <td>7.350 <span class="gain">(+0.169)</span></td>
+          </tr>
+          <!-- rsLoRA -->
+          <tr>
+            <td rowspan="2" class="method left">rsLoRA <span class="ref">(Kalajdzievski, 2023)</span></td>
+            <td><span class="cross">✗</span></td>
+            <td>41.16</td><td>5.46</td><td>16.46</td><td>35.72</td><td>7.300</td>
+          </tr>
+          <tr class="with-ours last-of-strategy">
+            <td><span class="check">✓</span></td>
+            <td>58.15 <span class="gain">(+16.99)</span></td>
+            <td>10.76 <span class="gain">(+5.30)</span></td>
+            <td>29.87 <span class="gain">(+13.41)</span></td>
+            <td>42.06 <span class="gain">(+6.34)</span></td>
+            <td>7.662 <span class="gain">(+0.362)</span></td>
+          </tr>
+          <!-- DoRA -->
+          <tr>
+            <td rowspan="2" class="method left">DoRA <span class="ref">(Liu et al., 2024b)</span></td>
+            <td><span class="cross">✗</span></td>
+            <td>40.11</td><td>5.36</td><td>17.07</td><td>36.51</td><td>7.125</td>
+          </tr>
+          <tr class="with-ours last-of-strategy">
+            <td><span class="check">✓</span></td>
+            <td>57.01 <span class="gain">(+16.90)</span></td>
+            <td>10.78 <span class="gain">(+5.42)</span></td>
+            <td>30.58 <span class="gain">(+13.51)</span></td>
+            <td>42.33 <span class="gain">(+5.82)</span></td>
+            <td>7.475 <span class="gain">(+0.350)</span></td>
+          </tr>
+          <!-- PiSSA -->
+          <tr>
+            <td rowspan="2" class="method left">PiSSA <span class="ref">(Meng et al., 2024)</span></td>
+            <td><span class="cross">✗</span></td>
+            <td>52.46</td><td>7.34</td><td>22.56</td><td>40.48</td><td>7.200</td>
+          </tr>
+          <tr class="with-ours">
+            <td><span class="check">✓</span></td>
+            <td>60.88 <span class="gain">(+8.42)</span></td>
+            <td>12.06 <span class="gain">(+4.72)</span></td>
+            <td>31.71 <span class="gain">(+9.15)</span></td>
+            <td>41.53 <span class="gain">(+1.05)</span></td>
+            <td>7.475 <span class="gain">(+0.275)</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TABLE 3 -->
+    <h3 style="text-align: left; margin-top: 36px;">Table 3. Results of applying our framework across diverse models.</h3>
+    <p class="table-caption">
+      We compare against the hyperparameter settings suggested by PiSSA (Meng et al., 2024), where they were dedicatedly tuned. The experiments demonstrate that our method is effective across a wide range of models.
+    </p>
+
+    <div class="table-wrap">
+      <table class="results">
+        <thead>
+          <tr>
+            <th rowspan="2" class="left">Model</th>
+            <th rowspan="2">Ours</th>
+            <th colspan="2" class="group">Accuracy (%)</th>
+            <th colspan="2" class="group">Pass@1</th>
+            <th class="group">GPT-Score</th>
+          </tr>
+          <tr>
+            <th class="sub">GSM8K</th>
+            <th class="sub">MATH</th>
+            <th class="sub">HumanEval</th>
+            <th class="sub">MBPP</th>
+            <th class="sub">MT-Bench</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- LLaMA2-7B -->
+          <tr>
+            <td rowspan="2" class="method left">LLaMA2-7B <span class="ref">(Touvron et al., 2023)</span></td>
+            <td><span class="cross">✗</span></td>
+            <td>41.47</td><td>5.24</td><td>16.31</td><td>35.47</td><td>7.181</td>
+          </tr>
+          <tr class="with-ours last-of-strategy">
+            <td><span class="check">✓</span></td>
+            <td>62.93 <span class="gain">(+21.46)</span></td>
+            <td>12.88 <span class="gain">(+7.64)</span></td>
+            <td>30.49 <span class="gain">(+14.18)</span></td>
+            <td>42.59 <span class="gain">(+7.12)</span></td>
+            <td>7.350 <span class="gain">(+0.169)</span></td>
+          </tr>
+          <!-- Mistral -->
+          <tr>
+            <td rowspan="2" class="method left">Mistral-7B-v0.1 <span class="ref">(Jiang et al., 2023)</span></td>
+            <td><span class="cross">✗</span></td>
+            <td>69.90</td><td>19.96</td><td>45.73</td><td>61.90</td><td>8.425</td>
+          </tr>
+          <tr class="with-ours last-of-strategy">
+            <td><span class="check">✓</span></td>
+            <td>74.07 <span class="gain">(+4.17)</span></td>
+            <td>23.46 <span class="gain">(+3.50)</span></td>
+            <td>54.27 <span class="gain">(+8.54)</span></td>
+            <td>65.08 <span class="gain">(+3.18)</span></td>
+            <td>8.688 <span class="gain">(+0.263)</span></td>
+          </tr>
+          <!-- Gemma -->
+          <tr>
+            <td rowspan="2" class="method left">Gemma-7B <span class="ref">(Team et al., 2024)</span></td>
+            <td><span class="cross">✗</span></td>
+            <td>75.51</td><td>29.44</td><td>49.39</td><td>63.23</td><td>8.363</td>
+          </tr>
+          <tr class="with-ours">
+            <td><span class="check">✓</span></td>
+            <td>78.77 <span class="gain">(+3.26)</span></td>
+            <td>30.24 <span class="gain">(+0.80)</span></td>
+            <td>53.05 <span class="gain">(+3.66)</span></td>
+            <td>67.46 <span class="gain">(+4.23)</span></td>
+            <td>8.488 <span class="gain">(+0.125)</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ QUALITATIVE RESULTS ============ -->
+<section class="content wide" id="qualitative">
+  <div class="container">
+    <h2>Qualitative Results</h2>
+    <h3 style="text-align: left;">Qualitative ablation study of our components.</h3>
+    <figure class="qual">
+      <img src="static/images/qualitative.png" alt="Qualitative ablation study: embedding spaces under different components.">
+      <figcaption>
+        We visualize how the embedding space evolves with our proposed components: <b>(a)</b> shows the embedding space from a frozen LLM <em>ϕ</em>; <b>(b)</b> shows the space when a projection layer <em>P(·; θ)</em> is added to the frozen LLM; and <b>(c)</b> shows the space when both the projection layer and the learnable token <em>ψ</em> are employed. Dots are all possible points, and stars indicate visited points during the optimization. The trajectories in each figure indicate the main paths across steps, shown in arrow sequence. For clarity, only a few selected optimization trajectories are shown in each figure. These results suggest that incorporating the projection layer and learnable token produces a smoother, more structured embedding space, thereby enabling efficient optimization.
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ BIBTEX ============ -->
+<section class="content alt" id="bibtex">
+  <div class="container">
+    <h2>BibTeX</h2>
+    <pre class="bibtex" id="bibtex-block"><button class="copy-btn" onclick="copyBib()">Copy</button>@inproceedings{baek2026language,
+  title     = {A Language-Guided Bayesian Optimization for Efficient LoRA Hyperparameter Search},
+  author    = {Baek, Seong-Eun and Lee, Jung-Mok and Kim, Sung-Bin and Oh, Tae-Hyun},
+  booktitle = {Proceedings of the International Conference on Machine Learning (ICML)},
+  year      = {2026}
+}</pre>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="icons">
+    <a href="https://arxiv.org/abs/2602.11171" target="_blank" rel="noopener" title="arXiv"><i class="fas fa-file-pdf"></i></a>
+    <a href="#" title="GitHub"><i class="fab fa-github"></i></a>
+  </div>
+  <div>
+    This website is licensed under a
+    <a href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+  </div>
+  <div style="margin-top: 8px;">
+    © 2026 · Built from the <a href="https://nerfies.github.io/">Nerfies template</a>.
+  </div>
+</footer>
+
+<script>
+  function copyBib() {
+    const block = document.getElementById('bibtex-block');
+    const text = block.innerText.replace(/^Copy\s*/, '');
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = block.querySelector('.copy-btn');
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied';
+      setTimeout(() => btn.textContent = orig, 1500);
+    });
+  }
+</script>
+
+</body>
+</html>
